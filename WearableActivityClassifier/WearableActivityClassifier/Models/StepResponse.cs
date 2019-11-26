@@ -6,20 +6,20 @@ using System.Text;
 namespace WearableActivityClassifier.Models
 {
     [DataContract]
-    class HeartRateResponse
+    class StepResponse
     {
-        [DataMember(Name = "activities-heart-intraday")]
-        public HeartRateIntraday heartRateIntraday { get; set;  }
+        [DataMember(Name = "activities-steps-intraday")]
+        public HeartRateIntraday heartRateIntraday { get; set; }
     }
 
-    class HeartRateIntraday
+    class StepIntraday
     {
-        public List<HeartRateIntradayDatapoint> dataset { get; set; }
+        public List<StepIntradayDatapoint> dataset { get; set; }
         public int datasetInterval { get; set; }
         public string datasetType { get; set; }
     }
 
-    class HeartRateIntradayDatapoint
+    class StepIntradayDatapoint
     {
         public string time { get; set; }
         public int value { get; set; }

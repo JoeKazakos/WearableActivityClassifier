@@ -4,9 +4,9 @@ using System.Text;
 
 namespace WearableActivityClassifier.Models
 {
-    class HeartRateIntradayDatapoint
+    class DeviceInfoResponse
     {
-        public string time { get; set; }
-        public int value { get; set; }
+        public string mac { get; set; }
+        public DateTime lastSyncTime { get; set; }
     }
 }
