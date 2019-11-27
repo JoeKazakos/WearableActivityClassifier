@@ -9,7 +9,7 @@ namespace WearableActivityClassifier.Models
     class StepResponse
     {
         [DataMember(Name = "activities-steps-intraday")]
-        public HeartRateIntraday heartRateIntraday { get; set; }
+        public StepIntraday stepIntraday { get; set; }
     }
 
     class StepIntraday
