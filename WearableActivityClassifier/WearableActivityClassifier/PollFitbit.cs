@@ -65,7 +65,7 @@ namespace WearableActivityClassifier
                 {
 
                     DateTime startTime = mostRecentEntryTime.AddMinutes(1);
-                    DateTime endTime = mostRecentEntryTime.AddMinutes(60 * 16);
+                    DateTime endTime = mostRecentEntryTime.AddMinutes(60 * 12);
 
                     if (endTime > deviceSyncTime)
                         endTime = deviceSyncTime;
@@ -73,6 +73,8 @@ namespace WearableActivityClassifier
                     if (startTime.Date != endTime.Date) // rolling over midnight
                         endTime = new DateTime(startTime.Year, startTime.Month, startTime.Day, 23, 59, 00);
 
+                    log.LogInformation("\tstartTime:" + startTime.ToString("MM/dd/yyyy HH:mm:ss"));
+                    log.LogInformation("\tendTimeTime:" + endTime.ToString("MM/dd/yyyy HH:mm:ss"));
 
                     var heartRateResponse = GetHRDataAsync(startTime, endTime, log).Result;
                     var stepResponse = GetStepDataAsync(startTime, endTime, log).Result;
@@ -84,8 +86,20 @@ namespace WearableActivityClassifier
                     var heartRateTimes = heartRateData.Select(d => d.time).ToList();
                     var stepTimes = stepData.Select(d => d.time).ToList();
                     allTimes.AddRange(heartRateTimes);
-                    //allTimes.AddRange(stepTimes);
+
+                    // in the case that the fitbit doesn't collect data for several hours
+                    // we won't ever make a new entry. We need log an entry with no data, 
+                    // so that we can move on
+                    if (minutesEntryBehindSync > 120)
+                    {
+                        DateTime fillerTime = new DateTime(endTime.Year, endTime.Month, endTime.Day,
+                            endTime.Hour, endTime.Minute, 0);
+                        allTimes.Add(fillerTime.ToString("yyyy-MM-dd HH:mm:ss"));
+
+                    }
+
                     allTimes.Distinct();
+
 
                     foreach (String timeDatapoint in allTimes)
                     {
