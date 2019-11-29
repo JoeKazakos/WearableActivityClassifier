@@ -41,6 +41,12 @@ namespace WearableActivityClassifier
                 var minutesSinceSync = (DateTime.Now.Ticks - deviceSyncTime.Ticks) / ticksInMinute;
                 var minutesEntryBehindSync = minutesSinceLastEntry - minutesSinceSync;
 
+                log.LogInformation("\tminutesSinceInsertedEntry:" + minutesSinceInsertedEntry);
+                log.LogInformation("\tminutesSinceLastEntry:" + minutesSinceLastEntry);
+                log.LogInformation("\tminutesSinceSync:" + minutesSinceSync);
+                log.LogInformation("\tminutesEntryBehindSync:" + minutesEntryBehindSync);
+
+
                 var completeDataUpdate = true;
 
                 // If we are behind by more than an hour AND we just wrote an entry, then exit.
@@ -54,11 +60,12 @@ namespace WearableActivityClassifier
                 if (minutesEntryBehindSync == 0)
                     completeDataUpdate = false;
 
+                log.LogInformation("\tcompleteDataUpdate:" + completeDataUpdate);
                 if (completeDataUpdate)
                 {
 
                     DateTime startTime = mostRecentEntryTime.AddMinutes(1);
-                    DateTime endTime = mostRecentEntryTime.AddMinutes(60 * 6);
+                    DateTime endTime = mostRecentEntryTime.AddMinutes(60 * 16);
 
                     if (endTime > deviceSyncTime)
                         endTime = deviceSyncTime;
