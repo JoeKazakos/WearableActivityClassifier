@@ -9,8 +9,8 @@ using Newtonsoft.Json;
 using WearableActivityClassifier.Models;
 using System.Linq;
 using Microsoft.Azure.Cosmos.Table;
-
-
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace WearableActivityClassifier
 {
@@ -25,7 +25,7 @@ namespace WearableActivityClassifier
             {
                 log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
 
-                var cloudTable = GetStorageTableConnection(log);
+                var cloudTable = GetStorageTableConnection(log,"WearableActivityTable");
                 
                 var deviceSyncTime = await GetDeviceSyncTime(log);
 
@@ -122,13 +122,13 @@ namespace WearableActivityClassifier
             }
         }
 
-        public static CloudTable GetStorageTableConnection(ILogger log)
+        public static CloudTable GetStorageTableConnection(ILogger log, String tableName)
         {
             var connectionString = Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process);
 
             var cloudStorageAccount = CloudStorageAccount.Parse(connectionString);
             var cloudStorageClient = cloudStorageAccount.CreateCloudTableClient(new TableClientConfiguration());
-            var cloudTableReference = cloudStorageClient.GetTableReference("WearableActivityTable");
+            var cloudTableReference = cloudStorageClient.GetTableReference(tableName);
             return cloudTableReference;
         }
  
@@ -212,6 +212,73 @@ namespace WearableActivityClassifier
 
                 return heartRateResponse;
             }
+        }
+
+        [FunctionName("GetLoggedActivityData")]
+        public static async Task<IActionResult> GetLoggedActivityData(
+        [HttpTrigger("post", Route = null)] HttpRequest req,
+        ILogger log)
+        {
+            try
+            {
+                var cloudTable = GetStorageTableConnection(log, "LoggedActivity");
+                var dataTable = GetStorageTableConnection(log, "WearableActivityTable");
+
+                List<dynamic> returnData = new List<dynamic>();
+
+                var cloudTableQuery = new TableQuery();
+                var entries = cloudTable.ExecuteQuery(cloudTableQuery).ToList();
+
+                foreach (var entry in entries)
+                {
+                    var p = entry.Properties;
+                    var activityType = p["ActivityType"].StringValue;
+                    var startTime = p["StartTime"].StringValue;
+                    var endTime = p["EndTime"].StringValue;
+
+                    var startTimeDt = DateTime.Parse(startTime);
+                    var endTimeDt = DateTime.Parse(endTime);
+
+                    var startRowKey = (DateTime.MaxValue.Ticks - startTimeDt.Ticks).ToString("d19");
+                    var endRowKey = (DateTime.MaxValue.Ticks - endTimeDt.Ticks).ToString("d19");
+
+                    string afterStartFilter = TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.LessThanOrEqual, startRowKey);
+                    string beforeEndFilter = TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.GreaterThanOrEqual, endRowKey);
+
+                    string combinedFilter = TableQuery.CombineFilters(afterStartFilter, TableOperators.And, beforeEndFilter);
+
+                    var dataQuery = new TableQuery().Where(combinedFilter);
+
+                    var activityData = dataTable.ExecuteQuery(dataQuery).ToList();
+
+                    List<dynamic> listOfActivityData = new List<dynamic>();
+                    foreach (var activityDatapoint in activityData)
+                    {
+                        var dpProperties = activityDatapoint.Properties;
+                        var time = dpProperties["Time"].StringValue;
+                        var heartRate = dpProperties["HeartRate"].Int32Value;
+                        var steps = dpProperties["Steps"].Int32Value;
+
+                        var returnDatapoint = new
+                        {
+                            activityType = activityType,
+                            time = time,
+                            heartRate = heartRate,
+                            steps = steps
+                        };
+                        listOfActivityData.Add(returnDatapoint);
+                    }
+
+                    returnData.AddRange(listOfActivityData);
+                }
+
+                return new OkObjectResult(returnData);
+            }
+            catch (Exception e)
+            {
+                return new BadRequestObjectResult("BROKEN!!");
+            }
+
         }
     }
 }

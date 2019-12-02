@@ -1,0 +1,7 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs
+/WearableActivityClassifier/.vs/WearableActivityClassifier
+/WearableActivityClassifier/WearableActivityClassifier/Properties/PublishProfiles
