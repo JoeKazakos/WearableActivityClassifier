@@ -1,30 +1,32 @@
 import logging
 
 import azure.functions as func
-#import json
-#import numpy as np
-#import pickle
-#from sklearn import tree
-    
+from sklearn import tree
+import pickle
+from os import path
+
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
+
+    decisionTreeModelFilename = 'DecisionTreeModel.pkl'
+    if path.exists(decisionTreeModelFilename):
+        logging.info("file exists")
+        with open(decisionTreeModelFilename, 'rb') as handle:
+            clf = pickle.load(handle)
+            logging.info("Loaded decision tree")
     
-   # with open('DecisionTreeModel.pickle', 'rb') as handle:
-   #     clf = pickle.load(handle)
+    logging.info("AFTER READ")
 
-    name = req.params.get('name')
-    if not name:
-        try:
-            req_body = req.get_json()
-        exceptdf ValueError:
-            pass
-        else:
-            name = req_body.get('name')
+    req_body = req.get_json()
+    heartRate = req_body.get("heartRate")
+    steps = req_body.get("steps")
+    
+    logging.info("HeartRate:"+str(heartRate))
+    logging.info("Steps:"+str(steps))
+    
+    classifications = clf.predict([[steps,heartRate]])
+    activityClassification = classifications[0]
 
-    if name:
-        return func.HttpResponse(f"Bye {name}!")
-    else:
-        return func.HttpResponse(
-             "Please pass a name on the query string or in the request body",
-             status_code=400
-        )
+    output = '{"activityType":"' + activityClassification + '"}'
+    return func.HttpResponse(output)
+

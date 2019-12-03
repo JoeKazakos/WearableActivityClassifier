@@ -11,12 +11,14 @@ using System.Linq;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Dynamic;
 
 namespace WearableActivityClassifier
 {
     public static class PollFitbit
     {
         public static CloudTable cloudTable;
+        public static DateTime lastTextSent = DateTime.Parse("12/01/2019 00:00");
 
         [FunctionName("PollFitbit")]
         public static async void RunAsync([TimerTrigger("0 */1 * * * *")]TimerInfo myTimer, ILogger log)
@@ -73,6 +75,7 @@ namespace WearableActivityClassifier
                     if (startTime.Date != endTime.Date) // rolling over midnight
                         endTime = new DateTime(startTime.Year, startTime.Month, startTime.Day, 23, 59, 00);
 
+                    startTime = startTime.AddMinutes(-20);
                     log.LogInformation("\tstartTime:" + startTime.ToString("MM/dd/yyyy HH:mm:ss"));
                     log.LogInformation("\tendTimeTime:" + endTime.ToString("MM/dd/yyyy HH:mm:ss"));
 
@@ -100,7 +103,6 @@ namespace WearableActivityClassifier
 
                     allTimes.Distinct();
 
-
                     foreach (String timeDatapoint in allTimes)
                     {
                         var heartRateDatapoint = heartRateData.Where(d => d.time == timeDatapoint).FirstOrDefault();
@@ -110,9 +112,22 @@ namespace WearableActivityClassifier
                         var steps = stepDatapoint != null ? stepDatapoint.value : 0;
                         DateTime dt = DateTime.Parse(timeDatapoint);
                         StorageEntry storageEntry = new StorageEntry(heartRate, steps, dt);
+                        storageEntry.Timestamp = dt;
 
                         var tableOperation = TableOperation.InsertOrReplace(storageEntry);
                         cloudTable.Execute(tableOperation);
+
+
+                        var minutesEntryBehindPresent = (DateTime.Now.Ticks - storageEntry.Timestamp.Ticks) / ticksInMinute;
+                        var minutesSinceLastText = (DateTime.Now.Ticks - lastTextSent.Ticks) / ticksInMinute;
+
+                        if (minutesEntryBehindPresent < 20 && minutesSinceLastText > 5)
+                        {
+                            var activityClassification = ClassifyActivity(storageEntry.Steps, storageEntry.HeartRate, log);
+                            if (activityClassification == "Run")
+                                await SendTextAsync(log);
+
+                        }
                     }
                 }
             }
@@ -120,6 +135,39 @@ namespace WearableActivityClassifier
             {
                 log.LogError(e.Message);
             }
+        }
+
+        private static string ClassifyActivity(int steps, int heartRate, ILogger log)
+        {
+            var classifyUrl = Environment.GetEnvironmentVariable("CLASSIFY_ACTIVITY_URL", EnvironmentVariableTarget.Process);
+
+            dynamic sendData = new ExpandoObject();
+            sendData.heartRate = heartRate;
+            sendData.steps = steps;
+
+            using (var client = new HttpClient())
+            {
+                var requestBodyString = JsonConvert.SerializeObject(sendData);
+                StringContent d = new StringContent(requestBodyString);
+                var response = client.PostAsync(classifyUrl, d);
+                var resultString = response.Result.Content.ReadAsStringAsync();
+                var classification = JsonConvert.DeserializeObject<dynamic>(resultString.Result);
+                var activityType = classification.activityType;
+                return (string) activityType;
+            }
+        }
+
+        private static async Task SendTextAsync(ILogger log)
+        {
+            var sendTextUrl = Environment.GetEnvironmentVariable("SEND_TEXT_URL", EnvironmentVariableTarget.Process);
+
+            using (var client = new HttpClient())
+            {
+                StringContent d = new StringContent("PollFitbit");
+                var response = await client.PostAsync(sendTextUrl, d);
+            }
+
+            lastTextSent = DateTime.Now;
         }
 
         public static CloudTable GetStorageTableConnection(ILogger log, String tableName)
