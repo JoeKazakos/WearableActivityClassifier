@@ -75,7 +75,6 @@ namespace WearableActivityClassifier
                     if (startTime.Date != endTime.Date) // rolling over midnight
                         endTime = new DateTime(startTime.Year, startTime.Month, startTime.Day, 23, 59, 00);
 
-                    startTime = startTime.AddMinutes(-20);
                     log.LogInformation("\tstartTime:" + startTime.ToString("MM/dd/yyyy HH:mm:ss"));
                     log.LogInformation("\tendTimeTime:" + endTime.ToString("MM/dd/yyyy HH:mm:ss"));
 
@@ -121,9 +120,13 @@ namespace WearableActivityClassifier
                         var minutesEntryBehindPresent = (DateTime.Now.Ticks - storageEntry.Timestamp.Ticks) / ticksInMinute;
                         var minutesSinceLastText = (DateTime.Now.Ticks - lastTextSent.Ticks) / ticksInMinute;
 
+                        log.LogInformation("\tminutesEntryBehindPresent" + minutesEntryBehindPresent);
+                        log.LogInformation("\tminutesSinceLastText" + minutesSinceLastText);
+
                         if (minutesEntryBehindPresent < 20 && minutesSinceLastText > 5)
                         {
                             var activityClassification = ClassifyActivity(storageEntry.Steps, storageEntry.HeartRate, log);
+                            log.LogInformation("\tactivityClassification" + activityClassification);
                             if (activityClassification == "Run")
                                 await SendTextAsync(log);
 
@@ -159,6 +162,7 @@ namespace WearableActivityClassifier
 
         private static async Task SendTextAsync(ILogger log)
         {
+            log.LogInformation("SendTextAsync()");
             var sendTextUrl = Environment.GetEnvironmentVariable("SEND_TEXT_URL", EnvironmentVariableTarget.Process);
 
             using (var client = new HttpClient())
@@ -168,6 +172,8 @@ namespace WearableActivityClassifier
             }
 
             lastTextSent = DateTime.Now;
+
+            log.LogInformation("\tlastTextSent:" + lastTextSent.ToString("MM/dd/yyyy HH:mm:ss"));
         }
 
         public static CloudTable GetStorageTableConnection(ILogger log, String tableName)
