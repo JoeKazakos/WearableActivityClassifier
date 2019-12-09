@@ -118,12 +118,13 @@ namespace WearableActivityClassifier
 
 
                         var minutesEntryBehindPresent = (DateTime.Now.Ticks - storageEntry.Timestamp.Ticks) / ticksInMinute;
-                        var minutesSinceLastText = (DateTime.Now.Ticks - lastTextSent.Ticks) / ticksInMinute;
+                        minutesEntryBehindPresent -= 300; //-300 is to accomodate timezones
+                        var minutesSinceLastText = (DateTime.Now.Ticks - lastTextSent.Ticks) / ticksInMinute; 
 
                         log.LogInformation("\tminutesEntryBehindPresent" + minutesEntryBehindPresent);
                         log.LogInformation("\tminutesSinceLastText" + minutesSinceLastText);
 
-                        if (minutesEntryBehindPresent < 20 && minutesSinceLastText > 5)
+                        if (minutesEntryBehindPresent < 30 && minutesSinceLastText > 5)
                         {
                             var activityClassification = ClassifyActivity(storageEntry.Steps, storageEntry.HeartRate, log);
                             log.LogInformation("\tactivityClassification" + activityClassification);

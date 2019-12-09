@@ -31,4 +31,21 @@ else:
         pickle.dump(savedPickle, handle)
 
 
+savedPickle = pickle.dumps(clf)
+with open('DecisionTreeModel.pickle', 'wb') as handle:
+    pickle.dump(savedPickle, handle)
+with open('DecisionTreeModel.pickle', 'r') as handle:
+    clf2 = pickle.loads(handle)
 
+
+
+decisionTreeModelFilename = 'DecisionTreeModel.pkl'
+# Open the file to save as pkl file
+#decision_tree_model_pkl = open(decision_tree_pkl_filename, 'wb')
+#pickle.dump(clf, decision_tree_model_pkl)
+with open(decisionTreeModelFilename, 'wb') as handle:
+    pickle.dump(clf,handle)
+
+with open(decisionTreeModelFilename, 'rb') as handle:
+    clf = pickle.load(handle)
+print(decision_tree_model2)

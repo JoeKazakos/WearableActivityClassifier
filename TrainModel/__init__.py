@@ -50,8 +50,8 @@ def main(mytimer: func.TimerRequest) -> None:
         logging.info("ERROR TRAINING MODEL")
     else:
         logging.info("Model successfully trained")
-        with open('DecisionTreeModel.pkl', 'wb') as handle:
-            pickle.dump(clf, handle)
+        with open(decisionTreeModelFilename, 'wb') as handle:
+            pickle.dump(clf,handle)
 
     logging.info("AFTER READ")
 
